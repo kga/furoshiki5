@@ -90,6 +90,8 @@ func commandExec(command []string) {
 	fmt.Printf("%s", strings.Join(logs, ""))
 
 	// TODO: push repository
+
+	os.Exit(exitCode)
 }
 
 func getUsername() string {
