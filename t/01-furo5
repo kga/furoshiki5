@@ -1,0 +1,69 @@
+#!/bin/bash
+
+set -e
+
+export EMAIL=test@example.com
+
+root=$(cd "$(dirname "$0")" && cd .. && pwd)
+
+FURO5=${FURO5-"go run $root/main.go"}
+
+main() {
+    go version
+    git version
+    $FURO5 version
+
+    logsrepo=$(mktemp -d)
+    logsdir=$(mktemp -d)
+    logsdir2=$(mktemp -d)
+    workdir=$(mktemp -d)
+
+    git init --quiet --bare "$logsrepo"
+
+    export FURO_LOGS_REPOSITORY="$logsrepo"
+    export FURO_LOGS_DIR="$logsdir"
+
+    cd "$workdir"
+    git init --quiet
+    git commit --quiet --allow-empty -m 'init'
+    git config remote.origin.url https://git.example.com/u/repo
+
+    $FURO5 exec echo 'Hello furoshiki!'
+    $FURO5 history
+
+    $FURO5 exec echo 'f  u'  'r  o'
+    $FURO5 history
+    $FURO5 history show HEAD | grep 'f  u r  o'
+    test "$($FURO5 history -1 | wc -l)" -eq 1
+
+    git config remote.origin.url ssh://git@git.example.com/u/repo
+    test "$($FURO5 history -1 | wc -l)" -eq 1
+
+    git config remote.origin.url git://git.example.com/u/repo
+    test "$($FURO5 history -1 | wc -l)" -eq 1
+
+    git config remote.origin.url https://user:pass@git.example.com/u/repo
+    test "$($FURO5 history -1 | wc -l)" -eq 1
+
+    cat > "$workdir"/project.yml <<YAML
+project: git.example.com/another/repo
+YAML
+
+    $FURO5 exec echo 'Hello another/repo!'
+    $FURO5 history
+
+    export FURO_LOGS_DIR="$logsdir2"
+    $FURO5 history pull
+    $FURO5 history
+
+    if FURO_LOGS_REPOSITORY='' $FURO5 exec echo 'this must not be executed' 2> /dev/null | grep 'this must not be executed'; then
+        die 'exec should not succeed when FURO_LOGS_REPOSITORY is empty'
+    fi
+}
+
+die() {
+    echo "$*" >&2
+    exit 1
+}
+
+main
