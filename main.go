@@ -15,6 +15,16 @@ import (
 
 const version = "0.0.0"
 
+var isDebug bool
+
+func init() {
+	if debug, err := strconv.ParseBool(os.Getenv("FURO_DEBUG")); err == nil {
+		isDebug = debug
+	} else {
+		isDebug = false
+	}
+}
+
 func main() {
 	args := os.Args
 
@@ -55,6 +65,11 @@ func commandExec(command []string) {
 
 	// TODO: init repository
 
+	os.Setenv("FURO", "1")
+	if isDebug {
+		fmt.Fprintf(os.Stderr, ">>> RUN %s\n", command)
+	}
+
 	logs, exitCode, err := executeCommand(command[0], command[1:]...)
 	if err != nil {
 		log.Fatal(err)
@@ -94,7 +109,7 @@ func dumpCommand(command []string) string {
 }
 
 func gitOutput(command ...string) (string, error) {
-	if furo_debug, _ := strconv.ParseBool(os.Getenv("FURO_DEBUG")); furo_debug {
+	if isDebug {
 		fmt.Fprintf(os.Stderr, ">>> RUN %s\n", append([]string{"git"}, command...))
 	}
 	lines, _, err := executeCommand("git", command...)
@@ -102,7 +117,7 @@ func gitOutput(command ...string) (string, error) {
 		return "", err
 	}
 
-	return strings.Join(lines, "\n"), nil
+	return strings.TrimSpace(strings.Join(lines, "\n")), nil
 }
 
 func executeCommand(command string, args ...string) ([]string, int, error) {
