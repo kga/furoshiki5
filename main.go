@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"strconv"
 	"strings"
 )
 
@@ -47,26 +48,16 @@ func commandExec(command []string) {
 		log.Fatal(err)
 	}
 
-	// TODO: init repository
-
-	var out bytes.Buffer
-	cmd := exec.Command(command[0], command[1:]...)
-	cmd.Stdout = &out
-
-	err = cmd.Run()
+	gitRevision, err := gitOutput("rev-parse", "HEAD")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var logs []string
-	for {
-		line, err := out.ReadString('\n')
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			log.Fatal(err)
-		}
-		logs = append(logs, line)
+	// TODO: init repository
+
+	logs, exitCode, err := executeCommand(command[0], command[1:]...)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	logHeader := []string{
@@ -74,9 +65,9 @@ func commandExec(command []string) {
 		fmt.Sprintf("user:        %s", getUsername()),
 		fmt.Sprintf("repoPath:    %s", "repoPath"),
 		fmt.Sprintf("projectPath: %s", "projectPath"),
-		fmt.Sprintf("gitRevision: %s", "gitRevision"),
+		fmt.Sprintf("gitRevision: %s", gitRevision),
 		fmt.Sprintf("furoVersion: %s", version),
-		fmt.Sprintf("exitCode:    %d", cmd.ProcessState.ExitCode()),
+		fmt.Sprintf("exitCode:    %d", exitCode),
 		"---\n",
 	}
 
@@ -100,6 +91,43 @@ func dumpCommand(command []string) string {
 		log.Fatal(err)
 	}
 	return string(b)
+}
+
+func gitOutput(command ...string) (string, error) {
+	if furo_debug, _ := strconv.ParseBool(os.Getenv("FURO_DEBUG")); furo_debug {
+		fmt.Fprintf(os.Stderr, ">>> RUN %s\n", append([]string{"git"}, command...))
+	}
+	lines, _, err := executeCommand("git", command...)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.Join(lines, "\n"), nil
+}
+
+func executeCommand(command string, args ...string) ([]string, int, error) {
+	var out bytes.Buffer
+	cmd := exec.Command(command, args...)
+	cmd.Stdout = &out
+
+	err := cmd.Run()
+	exitCode := cmd.ProcessState.ExitCode()
+	if err != nil {
+		return nil, exitCode, err
+	}
+
+	var lines []string
+	for {
+		line, err := out.ReadString('\n')
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, exitCode, err
+		}
+		lines = append(lines, line)
+	}
+
+	return lines, exitCode, nil
 }
 
 func commandHistory() {
