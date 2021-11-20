@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -69,7 +70,7 @@ func commandExec(command []string) {
 	}
 
 	logHeader := []string{
-		fmt.Sprintf("command:     %s", "json"),
+		fmt.Sprintf("command:     %s", dumpCommand(command)),
 		fmt.Sprintf("user:        %s", getUsername()),
 		fmt.Sprintf("repoPath:    %s", "repoPath"),
 		fmt.Sprintf("projectPath: %s", "projectPath"),
@@ -91,6 +92,14 @@ func getUsername() string {
 		return ""
 	}
 	return user.Username
+}
+
+func dumpCommand(command []string) string {
+	b, err := json.Marshal(command)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return string(b)
 }
 
 func commandHistory() {
