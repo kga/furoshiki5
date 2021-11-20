@@ -24,8 +24,11 @@ func main() {
 			commandExec(args[2:])
 		case "history":
 			commandHistory()
+		default:
+			commandHelp()
 		}
-
+	} else {
+		commandHelp()
 	}
 }
 
@@ -33,11 +36,12 @@ func commandVersion() {
 	fmt.Printf("furoshiki5 version %s\n", version)
 }
 
-func commandExec(cmds []string) {
-	cmdName := cmds[0]
-	args := cmds[1:]
+func commandExec(command []string) {
+	if len(command) == 0 {
+		commandHelp()
+	}
 
-	_, err := exec.LookPath(cmdName)
+	_, err := exec.LookPath(command[0])
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -45,7 +49,7 @@ func commandExec(cmds []string) {
 	// TODO: init repository
 
 	var out bytes.Buffer
-	cmd := exec.Command(cmdName, args...)
+	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Stdout = &out
 
 	err = cmd.Run()
@@ -91,4 +95,11 @@ func getUsername() string {
 
 func commandHistory() {
 	fmt.Println("not implemented yet")
+}
+
+func commandHelp() {
+	fmt.Fprintln(os.Stderr, `furo5 exec COMMAND [ARGS...]
+furo5 history [pull | show COMMIT | fix]
+furo5 version`)
+	os.Exit(127)
 }
